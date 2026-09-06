@@ -1,0 +1,27 @@
+﻿## 2026-09-05 OpenManus多模型分工改造
+- toolcall.py加②重复检测(成功缓存)+③失败重试上限(2次), 功能测试3场景全过, 验证脚本归档_stable
+- 新建zhipu_helper_tool/siliconflow_helper_tool工具, 复用已有config; manus.py注册+prompt写死分工铁律
+- 三API真实调用验证: 智谱free/air/硅基9B全通; 用量日志落盘4标签\usage\
+- 本次改造含OpenManus开源代码修改(开源拉取\OpenManus), 备份toolcall.py.bak_20260905
+
+## 2026-09-05 4标签桥接自愈能力改造（第22章跑批失败根因）
+- 现象: 第22章跑批6天全HTTP 500/超时; 定位根因=multi_bridge页面引用失效(TargetClosed), 非脚本/OpenManus逻辑问题
+- 修复: 重启bridge进程(7392→18392), 复用doubao_profile登录态, 3标签(doubao/qwen/glm)全部恢复连通
+- 新建 bridge_health_tool.py 自愈工具: 诊断(check)端口+3标签连通性; 恢复(restart)异常时自动杀bridge重建(绝不碰Chrome/看板)
+- manus.py注册BridgeHealth; prompt/manus.py追加"4标签自愈铁律"(遇到异常→check诊断→restart恢复→验证→重试)
+- 验证: 导入成功+工具注册+check实测三标签全通(豆包40s/千问30s/智谱44s); 自愈日志4标签\usage\bridge_health.jsonl
+- 参考网友方案: Agent四层容错/自愈循环(诊断→修复→验证→沉淀); OpenClaw ERRORS.md/LEARNINGS.md学习机制(待后续接入)
+
+## 2026-09-05 第22章《兴师问罪》跑批成功 + 错误日志沉淀机制落地
+- 跑批: run_ch22_3tag.py 全量6天成功(6/6七行完整), 豆包[1,2]938/824字 千问[3,4]346/346字 智谱[5,6]961/963字
+- 用量: 4标签共6次调用(豆包2/千问2/智谱2) 全成功 总耗时432s(智谱最慢114s/次); 结果 batch_ldj_ch22\results_3tag.jsonl
+- 改造: run_ch22_3tag.py 补用量登记(直连bridge也写ask_tag_usage.jsonl, 修复统计不到标签调用的缺口)
+- 网友方案落地: 新建 OpenManus\.learnings\ERRORS.md(故障记录)+LEARNINGS.md(修正经验); prompt写死"自我学习铁律"(任务前查历史错误/故障后立即记录); bridge_health工具自愈后自动沉淀经验到.learnings
+- 本次已沉淀: ERRORS.md #001 bridge TargetClosed故障 + LEARNINGS.md #001 标签异常自愈方法
+
+[05:36:49] 鹿鼎记第24~28章四API跑批完成
+- 5章30天全部合格（七行完整、无杂质）
+- gcli 40次 | 4标签31次 | air 31次/80198token | free 12次 | 硅基31次
+- 第25章经历bridge崩溃→重启→补跑自愈；第27章第4天500补跑；第28章第1天格式重跑
+- 联网搜索确认bridge崩溃根因=playwright persistent_context已知bug(#35466)+自杀逻辑误杀Chrome
+- 详细报告：鹿鼎记24-28章四API跑批详细报告_20260905.txt

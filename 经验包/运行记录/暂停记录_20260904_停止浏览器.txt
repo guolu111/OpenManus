@@ -1,0 +1,29 @@
+﻿============================================================
+【暂停记录】2026-09-04 16:57:40
+============================================================
+操作：用户要求暂停 4标签跑批任务，关闭所有 Chrome 浏览器相关进程
+执行内容：
+  1. 停止跑批链（ldj_4tag / drive21 / tongshuai_chat）✅
+  2. 停止 chrome_guard 守护（暂停期间不自动拉起 Chrome）✅
+  3. 停止 multi_bridge（8010）✅
+  4. 关闭 Chrome 浏览器 ✅
+  5. 保留任务看板体系（5840/14420/14980，铁律不碰）✅
+
+暂停原因（第21章跑批遇到问题）：
+  1. glm 标签在长文本分析时持续 HTTP 500（页面损坏），force_new 刷新后仍超时
+  2. doubao 标签同样在长文本分析时超时
+  3. 换会话阶段 qwen/kimi 频繁 60s 超时（被忽略容错，但拖慢节奏）
+  4. 已修复：ldj_4tag_batch.py 增加"连续失败≥3次踢出"保护 + call_bridge 超时 200→90秒
+  5. 待用户晚上有空再恢复跑批（需先手动检查/恢复 glm、doubao 标签页状态）
+
+当前状态：
+  - 第21章跑批：未完成（batch_ldj_ch21 已清理，待恢复重跑）
+  - 第20章及以前：已完成（第20章 6天全完成）
+  - 所有 Chrome 相关进程：已关闭
+  - 任务看板：保留运行
+
+恢复方法：
+  python 提问机器\_browser.py --start   # 启动4标签浏览器
+  python 中转API\bridges\multi_bridge.py # 启动bridge
+  python 中转API\schedulers\_chrome_guard.py # 启动守护
+  python 中转API\schedulers\ldj_4tag_batch.py --start 21 --end 21  # 重跑第21章

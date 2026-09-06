@@ -1,0 +1,62 @@
+﻿【桥接方案验证成功 · 2026-09-04】
+核心突破：用户提出"全选复制"方案——放弃精确选择器，改为发送后 Ctrl+A/Ctrl+C 全选复制整页文本，diff 提取新增回复。
+实现：multi_bridge.py 新增 _wait_for_fulltext_reply + _extract_new_part，发送前读 body.innerText 基线，fallback 轮询全文稳定2秒后 diff 提取。
+验证结果（4平台全通，测试词"请只回复四个字：马到成功"）：
+  - 豆包：✅ "马到成功" 33秒
+  - 千问国际版：✅ "马到成功" 69秒（优化前）
+  - Kimi：✅ "马到成功" 69秒
+  - 智谱清言：✅ "马到成功" 68秒
+优化项：
+  1. 用户脚本等待 60→15秒（Tampermonkey确认不推送，白等）
+  2. _clean_reply 增强：过滤免责声明/推荐追问/相邻重复去重 → 提取纯净
+  3. 备份 multi_bridge.py.bak_选择器版（v1.1选择器版 27094字节）
+当前状态：multi_bridge v7 PID运行中，8010监听，Chrome进程已分离（杀bridge不关浏览器），共享Chrome 4标签全开
+遗留：Tampermonkey用户脚本仍不推送（根因未深挖，全文提取已绕开此依赖，用户脚本可保留备用）
+
+【v8→v9 结构化升级 · 2026-09-04（用户指示：干活的都是代码，4主力只做监督/数据转移）】
+1. 满额/异常检测：新增 LIMIT_KEYS 关键词（对话上限/额度用完/聊天满/请新建对话等），命中→[LIMIT]→新建对话后重试一次
+2. 新建对话规则：满20次请求新建（NEW_CHAT_AFTER=20 已确认）；异常/满额即时新建
+3. 结构化状态输出：[STATE=INPUT/SENT/RUNNING/REPLIED/LIMIT/NEWCHAT] 日志，代码直接给AI答复，无需AI判断页面
+4. 结构化返回：chat/completions 返回 bridge_status 字段（status/stage/sent/replied/reply/request_count/new_chat）
+5. 精准提取：取第一段为主回复，剔除推荐追问/按钮噪音（Kimi新增175字→4字"马到成功"，豆包52字→4字）
+验证：Kimi 24.1秒✅ 豆包33.5秒✅ 提取纯净
+当前：multi_bridge v9 运行中（PID+8010监听+Chrome分离）
+
+【4标签跑批测试结论 · 2026-09-04（鹿鼎记第01章）】
+代码链路验证：✅ 全部正常（multi_bridge v9：INPUT/SENT/RUNNING/REPLIED 状态、4标签并行、results收集、成果组装脚本 ldj_4tag_batch.py 编译+解析通过）
+模型能力验证：❌ 4标签免费网页AI（豆包/千问/Kimi/智谱）做"六项分析"不可行
+  证据：①qwen 复读提示词格式+原文（823字全是回显）②豆包回复乱码 ③kimi 回复过短 ④glm HTTP500
+  结论：免费网页AI指令遵循力弱，无法执行"长原文+复杂六项格式"任务 → 印证用户判断"4主力只能干简单活"
+建议：六项分析用 gcli/deep（强模型，神雕验证质量好）；4标签做监督/数据搬运/简单子任务
+
+【双管理员架构确认 · 2026-09-04 用户拍板】
+- 管理员 = 谷歌 2.5flash（注意是 flash，不是 plus！1000次/天 API）+ DeepSeek 网页版（无头桥接，深度判断）
+- 分工：谷歌 2.5flash 管例行（巡查/联络/验收初筛）；DeepSeek 网页版管深度（复杂判断/代码异常评估/深度验收）
+- 优先级：DeepSeek 更聪明 → 复杂判断优先问 DeepSeek；谷歌管高频例行
+- 待办：新建 DeepSeek 管理员通道（无头单通道桥接，不占共享Chrome 4标签），先实测后接入管理员调度
+- 代码异常上报链（用户定义）：4主力检查代码→管理员(DeepSeek/谷歌)评估→谷歌中转改代码→不行上升收费API→全部生成日记→蒸馏汇报
+
+【鹿鼎记4标签跑批修复记录 · 2026-09-04】
+- 修复1：提问方式——"你是XX专家/只输出固定格式/【今日原文】标签"触发网页AI风控复读 → 改自然语言一句话+直接贴原文（已验证有效）
+- 修复2：多行提取——"取第一段"截断七行分析 → 改为保留完整多行（_clean_reply已滤噪音）
+- 修复3：稳定判定——2秒→4秒（防流式生成中途停顿误判）
+- 修复4：用户消息剥离——尾部原文锚点 rfind 剥离（qwen提取干净326字验证通过）
+- 修复5：发送时序——用户明确指出：输入后等1.5~2秒再回车（数据搬运时间），回车过快→空白发送→页面回"？"
+- 修复6：智谱URL——chatglm.cn/ 会跳到工具详情页 alltoolsdetail → 改 main/chat（仍跳转，待进一步处理）
+- 异常上报：ldj_4tag_batch.py 新增 异常_ldj.txt 日记（4主力检查→管理员评估→谷歌改代码→上升API 上报链落地）
+- 验证：qwen 326字干净七行 ✅ kimi 898字 ✅ doubao 429字（开头有时间戳噪音待清）✅ glm 失败（换标签）
+
+【浏览器独立化·提问机器资产 · 2026-09-04 用户要求】
+- 新建 提问机器\_browser.py：4标签浏览器管理器（独立资产，不再与其他脚本混用）
+- 职责：--start 启动共享Chrome+4标签 / --status 检查 / --stop --force 受控关闭
+- 铁律（用户拍板）：浏览器(4标签)是重要资产，不能随意关闭/杀后台；--stop 必须 --force 才执行
+- 架构：浏览器启动逻辑唯一在 _browser.py 的 open_browser()；bridge(multi_bridge.py) import _browser 调用，不再自己实现启动/关闭
+- 技术验证：connect_over_cdp 连9333被360拦截(ETIMEDOUT，死路确认)；launch_persistent_context 同profile冲突；最终=bridge调用open_browser()统一启动
+- 效果：杀bridge不关浏览器(Job分离)✅；bridge重启需先 _browser.py --stop --force 关浏览器再启（launch同profile限制）
+- 根因记录：用户每次发消息→环境把Chrome进程清理→bridge/跑批断链。独立化后可用 _browser.py --status 快速检测 + --start 一键恢复
+- 跑批恢复：第01章成果已生成(105行,6天完整)；第02-03章已后台启动(07:12)
+
+【鹿鼎记第01章成果质量验证】
+- 6天全部完成（qwen/kimi/豆包产出，智谱失败由豆包兜底）
+- qwen第2天326字超干净(七行完整)✅ kimi第3天898字✅ doubao有页面噪音待二次清洗
+- 待办：ldj_4tag_batch.py 组装阶段加二次清洗(时间戳/问号串/推荐问句/按钮)

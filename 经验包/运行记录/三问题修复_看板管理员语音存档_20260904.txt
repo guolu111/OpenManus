@@ -1,0 +1,32 @@
+﻿==================================================
+【一念永恒】三问题修复记录（看板API监测 / 管理员未用 / 语音存档）
+时间: 2026-09-04 11:46:14
+==================================================
+
+一、任务看板API监测空白
+  根因1: api_usage.json 被并发写坏(两份JSON粘一起) → 看板load_api_usage解析失败→显示空白
+  根因2: api_usage.py 无跨进程文件锁, 多进程同时bump()写同一文件 → 竞态损坏
+  修复: ①修复损坏json(重建准确计数) ②api_usage.py加msvcrt文件锁防并发写坏
+  验证: 看板refresh每次实时读json(第331行), 数据修复后自动显示
+  当前: 谷歌中转6次 / 4主力14次 / DeepSeek1次
+
+二、管理员(谷歌2.5-flash-lite)一条都没用——用户质疑是否在扮演
+  根因(如实): 新建的main4_batch.py只调了4主力API分析, 漏接了管理员的验收环节
+          (旧ldj_4tag_batch有make_accept_list调2.5验收, 新main4_batch漏掉)
+  证据: 4主力是真实API调用(第9章日志[第3天]glm-4-flash 分析中→完成15s), 非扮演
+  修复: main4_batch.py新增admin_accept()验收环节, 真调2.5-flash-lite→不合格升3.5-flash复核→Pro兜底
+  验证: 管理员2.5真实返回验收意见(第1天不合格,内容未写完), 看板谷歌子项2.5-flash-lite已+1
+  注意: 验收发现results.jsonl每day多条重试记录, 应取最后一条(下次修)
+
+三、语音存档没更新
+  根因1: _chat_watch.py进程8:56后死了, 且守护从未launch(CHATWATCH)自动拉起
+  根因2: 该脚本读豆包IndexedDB leveldb用utf-16-le解码, UTF-8/UTF-16混存错位→乱码
+        (证据: 存档内容猀吅灉弈瀀撅是UTF-8被当GBK解码的典型错位)
+  决策: 本地DB解析方案根本不可靠(污染存档), 废弃
+        → 改为MainAgent每次对话主动调_store.py存档(可靠不乱码)
+  执行: ①清空乱码备份到已处理归档 ②用_store.py重存用户3条关键消息(干净中文)
+       ③守护改为不再launch(CHATWATCH)防乱码 ④停掉_chat_watch进程
+
+四、铁律确认
+  看板PID 32056 / 守护PID 25844 全程未杀, 心跳正常
+  以修改代码为主: 修的是main4_batch/admin_accept/守护/api_usage, 未手工改数据

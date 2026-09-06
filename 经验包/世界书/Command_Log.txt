@@ -1,0 +1,5 @@
+Command_Log · 调用链溯源记录（v5.1 建立 2026-09-03 10:42）
+格式: [LOG_ID] [TIMESTAMP] [CHAIN: 管理员->将军->世界书->副将军->小助手] [COMMAND_CONTENT] [HASH_SIGN] [STATUS: PENDING/EXECUTED/REJECTED]
+======================================================================
+[LOG_ID: YNYH-20260903-0001] [TIMESTAMP: 2026-09-03 10:42:22] [CHAIN: 管理员->世界书->将军->副将军->小助手] [COMMAND_CONTENT: 军队式指挥链最终版重构落地] [HASH_SIGN: REBUILD-v5.1] [STATUS: EXECUTED]
+[LOG_ID: YNYH-20260903-V3TEST] [TIMESTAMP: 2026-09-03 10:57:03] [CHAIN: 将军->(越级直调小助手)X] [COMMAND_CONTENT: V3模拟越级调用] [HASH_SIGN: V3-TEST] [STATUS: REJECTED]

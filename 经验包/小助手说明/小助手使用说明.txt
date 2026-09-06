@@ -1,0 +1,196 @@
+======================================================================
+《一念永恒》文件夹 · 小助手使用说明（供所有调用方/使用方查阅）
+======================================================================
+版本：v2.1（2026-09-02，6小助手实测结论+统一调度器orchestrator接入后整理）
+位置：角色卡/小助手说明/小助手使用说明.txt
+说明：六个小助手的接入方式、可用模型、每日限额、使用条件一览。
+      供所有调用方（角色卡/脚本/人工）查阅的官方说明，避免误用/超额度。
+      注：hanbaoyu（小助手3）已按用户决定弃用（额度少，有gcli后不再需要），以下保留说明备查。
+
+【一、三个小助手总览】
+----------------------------------------------------------------------
+小助手1 · gcli（谷歌Gemini中转）
+  接入方式：直连HTTP（OpenAI兼容端点 https://gcli.ggchan.dev）
+  可用模型：Gemini系列（免费层仅Flash稳定：flash-lite→2.5-flash→3-flash 优选）
+  每日限额：60次/分钟、1000次/天
+  单条速度：快（3-5秒/条）
+  使用条件：gcli_config.json 的key有效即可，无需额外启动服务
+  定位：批量主力
+  关键文件：中转API/gcli_config.json、gcli_helper.py
+
+小助手2 · deep（DeepSeek网页桥接）
+  接入方式：Playwright浏览器桥接（本地服务 http://127.0.0.1:8001/v1）
+  可用模型：deepseek-chat
+  每日限额：无key/无限额（依赖 chat.deepseek.com 网页登录态）
+  单条速度：慢（1-3分钟/条）
+  使用条件：先 python start_deepseek.py 启动本地服务（8001）；
+            依赖 D:\bat\py\本地api\cache 内的网页登录态，失效需重新登录 chat.deepseek.com
+  定位：备用/少量重要任务
+  关键文件：中转API/deep_config.json、deep_helper.py、start/stop_deepseek.py
+
+小助手3 · hanbaoyu（Catiecli中转 · 浏览器桥接）【已弃用·备查】
+  接入方式：Playwright浏览器桥接（本地服务 http://127.0.0.1:8002/v1）
+  可用模型：
+    - catie-填表/doubao-seed-2.0-lite（豆包lite）← 主模型
+    - catie-测试/glm-5.3（智谱GLM）        ← 备用模型
+  每日限额：填表 100次/日 + 测试 200次/日 = 合计 300次/日，每日凌晨0点刷新，用完即止
+  单条速度：中（4-20秒/条）
+  使用条件：先 python start_hanbaoyu.py 启动本地服务（8002，需Python38）；
+            该站 Cloudflare 只放行真浏览器，必须走浏览器桥接；
+            /v1 只认API key，不需要网页登录
+  定位：【已弃用】额度少，用户决定不用（有gcli即可），后续不再启动
+  关键文件：中转API/hanbaoyu_config.json、hanbaoyu_bridge.py、hanbaoyu_helper.py、start/stop_hanbaoyu.py
+
+小助手4 · qwen（千问网页桥接）【新接入】
+  接入方式：Playwright浏览器桥接（本地服务 http://127.0.0.1:8003/v1）
+  可用模型：qwen-web（通义千问网页版，当前默认 Qwen3.7-Plus）
+  每日限额：无明确上限（依赖 chat.qwen.ai 网页登录态，免费额度）
+  单条速度：中（15-25秒/条）
+  使用条件：先 python web_bridge_manager.py start qwen 启动桥接（8003，需Python38）；
+            依赖 中转API/web_cache/qwen_profile 内的网页登录态，失效需重新扫码登录 chat.qwen.ai
+  定位：网页补充通道（与kimi/glm组成网页三通道，并行加速）
+  关键文件：中转API/qwen_bridge.py、web_helper.py、web_bridge_manager.py
+
+小助手5 · kimi（Kimi网页桥接）【新接入】
+  接入方式：Playwright浏览器桥接（本地服务 http://127.0.0.1:8004/v1）
+  可用模型：kimi-web（Kimi网页版，长文本处理强）
+  每日限额：无明确上限（依赖 www.kimi.com 网页登录态，免费额度）
+  单条速度：中（18-25秒/条）
+  使用条件：先 python web_bridge_manager.py start kimi 启动桥接（8004，需Python38）；
+            依赖 中转API/web_cache/kimi_profile 内的网页登录态，失效需重新扫码登录 www.kimi.com
+  定位：网页补充通道（长文本理解强，适合大段原文分析）
+  关键文件：中转API/kimi_bridge.py、web_helper.py、web_bridge_manager.py
+
+小助手6 · glm（智谱清言网页桥接）【新接入】
+  接入方式：Playwright浏览器桥接（本地服务 http://127.0.0.1:8005/v1）
+  可用模型：glm-web（智谱清言网页版，GLM-Flash）
+  每日限额：无明确上限（依赖 chatglm.cn 网页登录态，免费额度+积分）
+  单条速度：中（20-30秒/条，含思考过程）
+  使用条件：先 python web_bridge_manager.py start glm 启动桥接（8005，需Python38）；
+            依赖 中转API/web_cache/glm_profile 内的网页登录态，失效需重新扫码登录 chatglm.cn
+  定位：网页补充通道（积分制，6866积分可用）
+  关键文件：中转API/glm_bridge.py、web_helper.py、web_bridge_manager.py
+
+【二、hanbaoyu 限额详解（100 / 200 / 500 到底是哪个）】
+----------------------------------------------------------------------
+很多调用方会困惑：hanbaoyu 的限额到底是 100、200 还是 500？
+答：三个数是三个不同渠道各自的每日额度，不是同一渠道的三种说法。
+
+  100次/日 = 填表渠道（catie-填表/...，承载豆包lite）
+  200次/日 = 测试渠道（catie-测试/...，承载GLM-5.3）
+  500次/日 = 小奶龙渠道（catie-奶龙/...，承载Gemini等，看板公告"每只奶龙每天500次"）
+
+当前账号 nushengduanfa_83207 通过 /v1/models 实测只开放了【填表 + 测试】两个渠道，
+没有小奶龙渠道权限 → 实际每日可用 = 100 + 200 = 300次/日。
+（小奶龙 500次/日 属于其他有该渠道权限的账号/套餐；本账号拿不到。）
+
+补充：看板公告"填表次数降低为每日100次"（原先更高，人数增多被降额）。
+所有渠道额度每日凌晨0点刷新，当天用完就停，次日恢复，无需充值。
+
+【三、hanbaoyu 使用条件与注意事项】
+----------------------------------------------------------------------
+1. 必须先启动桥接服务（否则 helper 返回"[失败] 服务未启动"）：
+     cd 中转API
+     python start_hanbaoyu.py      # 自动选Python38，等"就绪 http://127.0.0.1:8002/v1"
+     停止：python stop_hanbaoyu.py
+2. 为什么必须桥接：hanbaoyu.ggff.net 的 Cloudflare 只放行真浏览器TLS，
+   普通HTTP客户端（urllib/httpx/curl等）全部在握手阶段被重置（WinError 10054），
+   所以必须用 Playwright + 系统Chrome 建会话，再在页面内 fetch 上游 /v1。
+3. 运行环境：需 Python38（C:\Users\mis\AppData\Local\Programs\Python\Python38\python.exe，
+   装有 playwright 1.48）。当前默认/沙箱 python 无 playwright/openai，不能直接跑 helper。
+4. 不需要网页登录：/v1 只认 API key（sk-ant- 前缀），账号密码不参与调用。
+5. 密钥说明：cat-/sk-ant- 不是同一把 key 换前缀（sk-ant- 需后台重新生成，实测旧hex换前缀401）。
+   当前有效密钥为 sk-ant- 前缀，存于 hanbaoyu_config.json。
+6. 无 Gemini 渠道权限：直接调 Gemini 模型会报
+   "您没有可用的3.0模型凭证 / AGY CLI凭证·共享池已关闭"。
+   该账号无 GCLI/AGY CLI 渠道，需自行上传 AGY CLI 凭证才能用 Gemini（暂不具备）。
+7. 常见错误：
+   - 429 / "额度不足"：当日填表或测试额度用完，等零点刷新，或换渠道/换小助手
+   - 502 / "服务未就绪"：桥接服务没启动或浏览器会话挂了，重启 start_hanbaoyu.py
+   - 400：GLM 等模型参数问题，调整 max_tokens/temperature 后重试
+
+【四、batch_run.py 调度（六通道并行）】
+----------------------------------------------------------------------
+  python batch_run.py --agent gcli|deep|hanbaoyu|qwen|kimi|glm|both|all|web|all6 --input 清单.txt --template "..." --out 目录 --rpm N
+  - both = gcli + deep 两通道均分
+  - all  = gcli + deep + hanbaoyu 三通道按条目均分（哪个服务没起自动剔除）
+  - web  = qwen + kimi + glm 三网页通道均分（哪个桥接没起自动剔除）
+  - all6 = 全部六通道（gcli+deep+hanbaoyu+qwen+kimi+glm）按条目均分（未就绪自动剔除）
+  - 限速：--rpm 为每分钟总条数，多通道自动均分
+  - 断点续跑：results.jsonl 已完成的自动跳过，中断重跑不重复扣额度
+  - 完成/熔断写【完成通知.txt】提醒，无需人工盯
+  - 网页版通道前置：先 python web_bridge_manager.py start all 启动 qwen/kimi/glm 三个桥接
+
+【四·五、orchestrator.py 统一调度器（方案B·主从+降级）【推荐】】
+----------------------------------------------------------------------
+  python orchestrator.py --input 清单.txt --template "请分析：{text}" --out 目录 --mode main --rpm 15
+  python orchestrator.py --input 清单.txt --template "请验证：{text}" --out 目录 --mode verify --rpm 8
+
+  - 主从+降级模式（mode=main）：gcli 主力优先 → 满负荷溢出到 deep → 再溢出到 qwen
+  - verify 模式（mode=verify）：kimi/glm 也参与（仅作复核）
+  - 健康检查自动剔除离线通道、失败自动降级、断点续跑、完成通知
+  - 相比 batch_run.py 的"均分"，orchestrator 是"主从+自动降级"，质量更统一
+  - 前置：gcli 直连（无需启动）；deep 需 python start_deepseek.py；qwen/kimi/glm 需 web_bridge_manager.py start all
+  - 实测结论：gcli/deep/qwen 优质可主力；kimi 复读不执行（最弱，自动降权）；glm 易超时（自动降权）
+  - 6小助手实测报告：中转API\6小助手测试报告.txt
+
+【五、网页版桥接统一管理（web_bridge_manager.py）】
+----------------------------------------------------------------------
+  python web_bridge_manager.py start [qwen|kimi|glm|all]   启动指定桥接
+  python web_bridge_manager.py stop  [qwen|kimi|glm|all]   停止指定桥接
+  python web_bridge_manager.py status                        查看所有桥接状态
+  python web_bridge_manager.py test  [qwen|kimi|glm|all]   测试指定桥接
+  - 桥接进程PID记录于 中转API/web_bridge_pids.json
+  - 三个桥接独立端口（8003/8004/8005），独立浏览器profile（web_cache/下）
+  - 登录态维护：profile内保存Cookie，失效需重新扫码登录（用 启动网页版登录.py 弹窗扫码）
+
+【六、网页版通道技术说明与已知问题】
+----------------------------------------------------------------------
+1. 实现方式：Playwright persistent context + 系统Chrome（headless=True），每次请求 page.goto 刷新页面
+   → 填输入框 → 按Enter发送 → 轮询DOM回复元素直到稳定 → 返回OpenAI兼容格式。
+2. 千问输入框：textarea.message-input-textarea（标准textarea，fill+Enter）。
+3. Kimi输入框：div.chat-input-editor（contenteditable，React受控组件，需用 execCommand('insertText') 注入，
+   直接设置 textContent 不生效）。
+4. 智谱输入框：textarea.scroll-display-none；回复含"思考过程"和"最终回复"两部分，
+   需优先取 .answer-content（最终回复），跳过 .answer-content-wrap/.markdown-body（思考过程），
+   否则会因思考过程流式输出导致稳定性检测永远不通过而超时。
+5. 资源占用：三个网页桥接同时运行 = 三个Chrome实例，内存/CPU占用较高；
+   低配电脑建议同时不超过2个网页桥接，或用 web 模式时只启动需要的通道。
+6. 后续优化方向：借鉴 WebAI2API 的 page.waitForResponse 拦截内部API SSE 流式响应，
+   替代DOM轮询，提升速度和稳定性（需先探查各平台内部API端点）。
+
+【七、历史备注】
+----------------------------------------------------------------------
+2026-09-02：6小助手实测（射雕第1章6日，每通道测1日）：
+            gcli第1日✅优质(25秒)、deep第2日✅优质、qwen第4日✅优质(45秒)、
+            kimi第5日⚠️复读不执行（最弱——把任务指令当待总结内容，只复述不分析）、
+            glm第6日❌超时(180秒)、hanbaoyu按用户决定弃用。
+            结论：gcli/deep/qwen 可主力；kimi/glm 自动降权（能通则用、不稳定跳过）。
+2026-09-02：deep通道修复——start_deepseek.py 用Python38跑main.py有环境问题导致抓取被拦截；
+            改用默认python+用户原始方式（D:\bat\py\本地api\main.py）成功恢复，端口8001正常。
+2026-09-02：新增统一调度器 orchestrator.py（方案B·主从+降级）——
+            gcli主力→溢出deep→溢出qwen；kimi/glm仅verify模式参与；
+            健康检查自动剔除离线、失败自动降级、断点续跑、完成通知。测试通过。
+2026-09-02：并行问题定性——"不能简单并行"是Playwright多实例共享Chrome user-data-dir冲突；
+            标准解法=每实例独立user-data-dir+独立端口（qwen/kimi/glm已有独立profile 8003/8004/8005）
+            +统一调度器做并行+降级（LiteLLM/OpenRouter模式）。
+2026-09-02：第3小助手 hanbaoyu 接入（方案甲）。实测 cat-/sk-ant- 前缀均只开放填表+测试两渠道；
+            切换 sk-ant- 前缀不能解锁 GCLI/AGY CLI 渠道（无凭证）。
+            小批量试点3条全部通过（豆包4.4s/GLM3.8s，batch 3条31s）。
+2026-09-02：第4/5/6小助手 千问/Kimi/智谱网页版接入。三个平台均已扫码登录，profile缓存于 web_cache/。
+            单条测试：千问17-20s、Kimi21-22s、智谱20-29s。三通道并行测试：Kimi/智谱正常，
+            千问因三Chrome同时运行资源竞争超时（单独运行正常）。
+            实现：qwen_bridge.py(8003)、kimi_bridge.py(8004)、glm_bridge.py(8005)、
+            web_helper.py（统一调用）、web_bridge_manager.py（统一管理）。
+            batch_run.py 新增 qwen/kimi/glm/web/all6 通道选项。
+
+2026-09-02（重要）：kimi/glm 桥接升级 v2.0 —— 从 DOM轮询 改为 API流拦截（参考 WebAI2API 思路 + qwen_bridge v2.0 成功架构）：
+  · glm_bridge.py v2.0：拦截 POST /chatglm.cn/chatglm/backend-api/assistant/stream（标准SSE data: JSON）。
+    解析：parts[].content[].type=think 跳过 / type=text 累加 / status=finish 结束；按 logic_id+text 去重。
+    实测 10.5秒返回（原 DOM轮询经常180秒超时）。
+  · kimi_bridge.py v2.0：拦截 POST /www.kimi.com/apiv2/kimi.gateway.chat.v1.ChatService/Chat（Connect-Web 协议）。
+    帧格式=4字节大端长度前缀+JSON，帧间夹杂gRPC头字节需容错跳过。
+    解析：op:set+mask:block.text 起始 / op:append+mask:block.text.content 增量累加 / think跳过 / done或MESSAGE_STATUS_COMPLETED结束。
+    实测 9-15秒返回（原 DOM轮询经常复读/失败）。
+  · 启动方式不变：python kimi_bridge.py（8004）/ python glm_bridge.py（8005）。
+  · 通道评级更新：kimi/glm 从"最弱/超时"升级为"可正常使用"，verify 复核可启用。
