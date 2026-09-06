@@ -1,0 +1,25 @@
+﻿## 002_本地部署全攻略 执行报告
+
+### 做了哪些
+- ✅ OpenManus已安装在Windows 11上（D:\360Downloads\金庸\一念永恒\一念永恒小说\开源拉取\OpenManus）
+- ✅ uv虚拟环境已创建（.venv，Python 3.12.9）
+- ✅ 所有依赖已安装
+- ✅ 谷歌中转API已配置（config.toml）
+- ✅ 三模型轮转已配置并验证生效
+- ✅ 28个自定义工具已注册
+- ✅ Playwright浏览器已安装
+
+### 没做哪些
+- ❌ 跨平台部署脚本（Mac/Linux）
+- ❌ 零环境引导部署（Bootstrap机制）
+- ❌ 新机器一键部署脚本
+- ❌ 路径去硬编码化（代码中还有很多D:\360Downloads硬编码）
+
+### 要改进哪些
+- 编写install_on_new_machine.py一键部署脚本
+- 编写bootstrap_win.bat零环境引导脚本
+- 全局路径去硬编码化，集中到config.toml的[paths] section
+- 编写跨平台兼容性测试
+
+### 试错哪些
+- 无（部署已完成，主要是后续部署到新机器时需要参考）

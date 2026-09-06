@@ -1,0 +1,64 @@
+# OpenManus 配置示例 - 一念永恒项目
+# 使用方法：复制本文件为 config.toml，然后填入你自己的API密钥
+# 注意：config.toml 已被 .gitignore 排除，不会上传到GitHub
+
+# 统帅默认使用谷歌中转API，三模型轮转避免429限流
+# 轮转策略：每用3次2.5-flash → 1次3.5-flash → 再3次2.5-flash → 1次pro
+
+[llm]
+model = "gemini-2.5-flash-lite"
+base_url = "https://你的中转API地址"
+api_key = "你的API密钥"
+max_tokens = 4096
+max_input_tokens = 500000
+temperature = 0.0
+max_steps = 50
+
+# 四模型轮转配置（遇到429限流时自动切换到下一个模型）
+[llm.model_rotation]
+enabled = true
+models = [
+    "gemini-2.5-flash-lite",  # 谷歌中转主力
+    "gemini-3.5-flash",        # 谷歌中转备用
+    "gemini-2.5-pro",           # 谷歌中转复杂任务
+    "glm-4.5-air"              # 智谱4.5-air，多端点分流
+]
+# 轮转比例：2.5用2次 → 3.5用1次 → pro用1次 → 智谱air用1次
+rotation_pattern = [0, 1, 0, 2, 3]
+# 各模型日限额（留缓冲）；智谱air按token计费，设高值
+daily_limits = { "gemini-2.5-flash-lite" = 950, "gemini-3.5-flash" = 190, "gemini-2.5-pro" = 95, "glm-4.5-air" = 999999 }
+
+[llm.vision]
+model = "gemini-2.5-flash-lite"
+base_url = "https://你的中转API地址"
+api_key = "你的API密钥"
+max_tokens = 4096
+temperature = 0.0
+
+# 浏览器：有头模式（真实验证），连接本机Chrome
+# Mac路径示例：/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+# Windows路径示例：C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe
+[browser]
+headless = false
+disable_security = true
+chrome_instance_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+# 搜索设置
+[search]
+engine = "Baidu"
+fallback_engines = ["DuckDuckGo", "Bing"]
+lang = "zh"
+country = "cn"
+
+# 沙箱：不启用Docker沙箱（本地执行），daytona填占位key避免校验报错
+[sandbox]
+use_sandbox = false
+
+[daytona]
+daytona_api_key = "openmanus-local-placeholder"
+
+[mcp]
+server_reference = "app.mcp.server"
+
+[runflow]
+use_data_analysis_agent = false

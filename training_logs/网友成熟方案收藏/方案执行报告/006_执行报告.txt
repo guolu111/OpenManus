@@ -1,0 +1,26 @@
+﻿## 006_Playwright浏览器配置 执行报告
+
+### 做了哪些
+- ✅ Playwright已安装
+- ✅ 三标签bridge使用launch_persistent_context启动Chrome
+- ✅ Chrome profile管理（doubao_profile）
+- ✅ Chrome调试端口9333
+- ✅ bridge与提问机器profile冲突已解决（只启动bridge）
+- ✅ bridge长回复超时已优化（120→180秒）
+- ✅ bridge找不到"重新回答"按钮时直接返回已生成内容
+
+### 没做哪些
+- ❌ 浏览器崩溃自动检测和自愈
+- ❌ 浏览器资源监控（内存/CPU）
+- ❌ 无头模式/有头模式自动切换
+- ❌ 浏览器profile定期清理
+
+### 要改进哪些
+- 编写browser_watchdog.py浏览器崩溃自愈脚本
+- 实现浏览器资源监控（超过阈值时重启）
+- 实现profile定期清理（避免profile过大）
+- 生产环境默认无头模式，调试时自动有头模式
+
+### 试错哪些
+- bridge和提问机器同时启动导致profile冲突，已解决（只启动bridge）
+- bridge超时120秒处理长回复（12037字）失败，已优化到180秒

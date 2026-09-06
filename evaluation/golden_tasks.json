@@ -1,0 +1,195 @@
+{
+  "version": "1.0",
+  "created": "2026-09-06",
+  "description": "OpenManus Golden Tasks 评测集 - 从真实任务中提取的代表性测试用例",
+  "evaluation_dimensions": [
+    "任务完成率",
+    "幻觉率（未知工具幻觉/影子调用/参数幻觉）",
+    "工具调用准确率（工具选择/参数正确/调用顺序）",
+    "错误恢复率",
+    "成本与延迟（Token消耗/完成时间）"
+  ],
+  "tasks": [
+    {
+      "id": "T001",
+      "category": "简单查询",
+      "difficulty": "easy",
+      "name": "查询当前API用量",
+      "prompt": "帮我查一下今天的API用量情况",
+      "expected_tools": ["usage_monitor"],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "返回各通道今日调用次数和剩余额度"
+    },
+    {
+      "id": "T002",
+      "category": "简单查询",
+      "difficulty": "easy",
+      "name": "查询任务状态",
+      "prompt": "当前有什么任务在运行吗？",
+      "expected_tools": ["status_monitor"],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "返回当前任务状态列表"
+    },
+    {
+      "id": "T003",
+      "category": "文件操作",
+      "difficulty": "easy",
+      "name": "读取指定文件",
+      "prompt": "帮我看一下 README.md 文件的内容",
+      "expected_tools": ["str_replace_editor"],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "成功读取并返回文件内容"
+    },
+    {
+      "id": "T004",
+      "category": "代码执行",
+      "difficulty": "easy",
+      "name": "简单Python计算",
+      "prompt": "帮我计算 1234 * 5678 的结果",
+      "expected_tools": ["python_execute"],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "正确返回 7006652"
+    },
+    {
+      "id": "T005",
+      "category": "网络搜索",
+      "difficulty": "medium",
+      "name": "联网搜索信息",
+      "prompt": "帮我搜索一下今天的天气情况",
+      "expected_tools": ["web_search"],
+      "expected_steps": 2,
+      "timeout": 120,
+      "success_criteria": "调用搜索工具并返回搜索结果"
+    },
+    {
+      "id": "T006",
+      "category": "多步任务",
+      "difficulty": "medium",
+      "name": "规划并执行多步任务",
+      "prompt": "帮我列出当前目录的文件，然后统计一下有多少个Python文件",
+      "expected_tools": ["bash", "python_execute"],
+      "expected_steps": 3,
+      "timeout": 120,
+      "success_criteria": "先列出文件，再统计Python文件数量，最后返回结果"
+    },
+    {
+      "id": "T007",
+      "category": "粗活分流",
+      "difficulty": "medium",
+      "name": "调用小模型处理粗活",
+      "prompt": "帮我把这段文字翻译成英文：今天天气真好，我们出去散步吧。",
+      "expected_tools": ["zhipu_helper", "siliconflow_helper"],
+      "expected_steps": 2,
+      "timeout": 120,
+      "success_criteria": "调用小模型API完成翻译，不占用主力模型额度"
+    },
+    {
+      "id": "T008",
+      "category": "错误处理",
+      "difficulty": "medium",
+      "name": "处理不存在的工具",
+      "prompt": "帮我调用 fly_to_the_moon 工具去月球",
+      "expected_tools": [],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "正确识别工具不存在，返回错误信息而不是编造工具调用",
+      "test_illusion": true
+    },
+    {
+      "id": "T009",
+      "category": "错误处理",
+      "difficulty": "hard",
+      "name": "错误恢复能力测试",
+      "prompt": "帮我读取一个不存在的文件 nonexistent_file_12345.txt，然后告诉我当前目录有哪些文件",
+      "expected_tools": ["str_replace_editor", "bash"],
+      "expected_steps": 3,
+      "timeout": 120,
+      "success_criteria": "第一步读取失败后，能正确处理错误并继续执行第二步列出文件",
+      "test_recovery": true
+    },
+    {
+      "id": "T010",
+      "category": "记忆功能",
+      "difficulty": "medium",
+      "name": "记忆工具测试",
+      "prompt": "记住：我喜欢用黑色主题的编辑器。然后回忆一下我刚才说了什么。",
+      "expected_tools": ["memory"],
+      "expected_steps": 3,
+      "timeout": 120,
+      "success_criteria": "先调用remember存储，再调用recall回忆，最后返回正确内容"
+    },
+    {
+      "id": "T011",
+      "category": "规划能力",
+      "difficulty": "hard",
+      "name": "复杂任务规划",
+      "prompt": "帮我分析一下这个项目的结构，然后生成一份项目结构说明文档",
+      "expected_tools": ["bash", "str_replace_editor", "python_execute"],
+      "expected_steps": 5,
+      "timeout": 300,
+      "success_criteria": "先探索目录结构，再分析关键文件，最后生成说明文档"
+    },
+    {
+      "id": "T012",
+      "category": "浏览器操作",
+      "difficulty": "hard",
+      "name": "浏览器工具调用",
+      "prompt": "帮我打开百度首页并截图",
+      "expected_tools": ["browser_exec", "browser_screenshot"],
+      "expected_steps": 3,
+      "timeout": 180,
+      "success_criteria": "调用浏览器工具打开网页并截图保存"
+    },
+    {
+      "id": "T013",
+      "category": "参数幻觉",
+      "difficulty": "hard",
+      "name": "参数幻觉测试",
+      "prompt": "帮我用 status_monitor 工具查询 task_id=99999 的任务状态",
+      "expected_tools": ["status_monitor"],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "正确调用工具并返回任务不存在的信息，不编造任务状态",
+      "test_param_hallucination": true
+    },
+    {
+      "id": "T014",
+      "category": "影子调用",
+      "difficulty": "hard",
+      "name": "影子调用测试",
+      "prompt": "帮我搜索一下 usage 相关的信息",
+      "expected_tools": ["usage_monitor"],
+      "expected_steps": 1,
+      "timeout": 60,
+      "success_criteria": "正确选择 usage_monitor 工具，而不是 web_search 等名字相似的工具",
+      "test_shadow_call": true
+    },
+    {
+      "id": "T015",
+      "category": "长输出处理",
+      "difficulty": "medium",
+      "name": "长输出自动截断测试",
+      "prompt": "帮我列出整个项目的所有文件，包括子目录的",
+      "expected_tools": ["bash"],
+      "expected_steps": 2,
+      "timeout": 120,
+      "success_criteria": "输出超过2000字符时自动截断并保存到文件，返回摘要+文件路径"
+    }
+  ],
+  "scoring": {
+    "task_completion": {"weight": 0.3, "description": "任务是否成功完成"},
+    "illusion_rate": {"weight": 0.2, "description": "幻觉率（未知工具/影子调用/参数幻觉）"},
+    "tool_accuracy": {"weight": 0.2, "description": "工具调用准确率（选择/参数/顺序）"},
+    "error_recovery": {"weight": 0.15, "description": "错误恢复能力"},
+    "cost_efficiency": {"weight": 0.15, "description": "成本与效率（Token/时间）"}
+  },
+  "pass_threshold": {
+    "overall_score": 70,
+    "task_completion_rate": 0.7,
+    "illusion_rate": 0.1
+  }
+}

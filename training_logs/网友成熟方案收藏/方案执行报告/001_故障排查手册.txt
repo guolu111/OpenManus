@@ -1,0 +1,10 @@
+﻿1. 模型轮转不生效：config.toml的[llm.model_rotation]被当作llm override，关键字段被pydantic丢弃 → 修复：config.py新增ModelRotationSettings类单独解析，llm.py从config获取rotator
+2. bridge长回复死循环：_wait_for_fulltext_reply超时120秒不够，找不到'重新回答'按钮时死循环 → 修复：超时→180秒，找不到按钮时直接返回已生成内容
+3. Chrome profile冲突：bridge和提问机器_browser.py同时启动用同一个profile → 修复：只启动bridge，让它自己启动Chrome
+4. optimize_plans超时：urllib timeout=300在某些情况下不生效 → 修复：添加socket.setdefaulttimeout，超时→180秒
+5. 智谱清言标签HTTP 500：bridge的Chrome标签页失效(TargetClosed) → 修复：重启bridge恢复
+6. 多统帅进程：venv python创建Python312子进程（父子关系）→ 修复：单实例锁+正确识别父子进程
+7. 飞书群聊@无响应：reply_text只回复私聊不回复群聊 → 修复：判断chat_type，群聊回复到chat_id
+8. 飞书私聊乱码：json.dumps未加ensure_ascii=False → 修复：添加ensure_ascii=False
+9. 黑窗一闪一闪：脚本用python.exe启动显示控制台 → 修复：用pythonw.exe或CREATE_NO_WINDOW
+10. 任务看板置顶覆盖桌面：tkinter topmost=True → 修复：强制topmost=False

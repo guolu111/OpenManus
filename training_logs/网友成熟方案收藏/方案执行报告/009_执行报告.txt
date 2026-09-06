@@ -1,0 +1,32 @@
+﻿## 009_工具调用系统开发指南 执行报告
+
+### 做了哪些
+- ✅ 26个自定义工具已开发
+- ✅ 工具已注册到manus.py
+- ✅ batch_run工具（异步子进程+实时日志+心跳）
+- ✅ optimize_plans工具（三标签方案优化）
+- ✅ notify_feishu工具（飞书通知）
+- ✅ usage_monitor工具（API用量监控）
+- ✅ status_monitor工具（状态监控）
+- ✅ bridge_health工具（bridge健康检查）
+- ✅ zhipu_helper/siliconflow_helper工具（粗活外包）
+- ✅ voice_correct工具（语音纠错）
+- ✅ comment_search工具（评论区搜索）
+- ✅ web_search工具（网页搜索）
+
+### 没做哪些
+- ❌ 飞书控制工具（通过飞书消息控制统帅）
+- ❌ 跑批控制工具（启动/暂停/恢复跑批任务）
+- ❌ 日志监控工具（实时监控日志并告警）
+- ❌ 自愈工具（自动检测并修复常见问题）
+- ❌ 工具调用统计与优化（哪些工具调用最多/失败最多）
+
+### 要改进哪些
+- 开发feishu_control工具（飞书消息→统帅命令）
+- 开发batch_control工具（跑批任务控制）
+- 开发log_monitor工具（日志监控告警）
+- 开发self_healing工具（自愈）
+- 建立工具调用统计 dashboard
+
+### 试错哪些
+- optimize_plans工具曾因bridge超时卡住，已优化（socket.setdefaulttimeout）
