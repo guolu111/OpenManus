@@ -1,0 +1,137 @@
+================================================================================
+                        豆包网页桥接 — 测试失败记录（待激活）
+================================================================================
+记录时间：2026-09-02
+状态：待激活（暂停开发，未来有空重启）
+相关文件：中转API/doubao_bridge.py（端口8006，代码已写完，未通过测试）
+          中转API/login_doubao_standalone.py（登录脚本）
+          中转API/web_cache/doubao_profile/（独立profile，已登录）
+
+================================================================================
+一、最终失败原因
+================================================================================
+豆包风控系统（shark_admin）触发人机验证，无头浏览器被检测到。
+
+错误信息：
+  error_code: 710022004
+  error_msg: "rate limited"
+  extra.decision: {"code":"10000","from":"shark_admin","type":"verify",
+                    "subtype":"semantic_reasoning"}
+
+即：豆包的风控引擎shark_admin判定请求为自动化行为，要求进行
+语义推理型人机验证（semantic_reasoning），普通的滑块/验证码
+无法通过。
+
+================================================================================
+二、测试过程与努力方向（共6轮迭代）
+================================================================================
+
+【第1轮】v1.0 初始版本
+  方案：DOM轮询抓回复 + Enter键发送
+  输入框：.tiptap.ProseMirror contenteditable
+  结果：失败 — "页面无输出，疑似登录失效或风控"
+  问题：Enter键可能未触发发送；DOM选择器未匹配到回复元素
+
+【第2轮】登录态诊断
+  方案：headless=False打开页面检查实际状态
+  发现：
+    - 已登录（36个cookies，含passport_mfa_token/d_ticket/multi_sids）
+    - 但导航栏有"登录"按钮（已登录状态下也显示），导致误判未登录
+    - 输入框实际是.tiptap.ProseMirror（不是WebAI2API用的textarea）
+    - 发送按钮button#flow-end-msg-send在输入文字后才出现
+  修复：登录检测改为只检测登录弹窗，不检测导航栏按钮
+
+【第3轮】v2.0 参考WebAI2API重写
+  方案：SSE拦截chat/completion接口 + 点击button#flow-end-msg-send发送
+  输入：execCommand('insertText')注入ProseMirror编辑器
+  输出：解析SSE事件（STREAM_CHUNK/CHUNK_DELTA/SSE_REPLY_END）
+  结果：部分成功 — 输入成功、发送成功、SSE捕获到响应
+  但响应体返回：error_code 710022002 "当前服务访问频繁，请稍后重试"
+  问题：短时间内测试次数过多，触发频率限制
+
+【第4轮】等待+编码修复
+  方案：等待2分钟/5分钟让频率限制重置；修复SSE响应体UTF-8编码问题
+  结果：仍失败 — 错误变为error_code 710022004 "rate limited"
+  问题：从简单频率限制升级为shark_admin风控人机验证
+
+【第5轮】有头浏览器+反检测
+  方案：headless=False（有头浏览器）+ --start-minimized + 反检测脚本
+  反检测措施：
+    - navigator.webdriver = undefined
+    - navigator.plugins = [1,2,3,4,5]
+    - navigator.languages = ['zh-CN','zh','en']
+    - window.chrome = {runtime:{}}
+    - --disable-blink-features=AutomationControlled
+  结果：未及测试（用户决定放弃）
+  推测：普通Chrome即使有头+反检测，可能仍无法绕过shark_admin的
+        语义推理验证。WebAI2API用的是Camoufox（反检测Firefox分支），
+        反检测能力更强。
+
+【第6轮】用户决定放弃
+  原因：豆包风控过于严格，其他5个小助手已够用
+  状态：进入待激活，代码保留，未来有空重启
+
+================================================================================
+三、关键技术发现（供未来重启参考）
+================================================================================
+1. 豆包输入框：.tiptap.ProseMirror（contenteditable DIV，ProseMirror编辑器）
+   必须用document.execCommand('insertText', false, text)注入
+   直接设textContent或keyboard.type不生效
+
+2. 豆包发送按钮：button#flow-end-msg-send
+   输入文字后才出现，必须点击发送，Enter键不触发发送
+
+3. 豆包SSE接口：https://www.doubao.com/chat/completion
+   content-type: text/event-stream
+   事件类型：SSE_HEARTBEAT / STREAM_MSG_NOTIFY / STREAM_CHUNK /
+             CHUNK_DELTA / SSE_REPLY_END / STREAM_ERROR
+   正文在STREAM_CHUNK的patch_op[].patch_value.content_block[]
+             （block_type=10000）的content.text_block.text中
+
+4. 豆包风控：shark_admin引擎，错误码710022004
+   触发条件：无头浏览器 + 高频请求 + 自动化输入特征
+   验证类型：semantic_reasoning（语义推理，非普通滑块）
+
+5. 登录态：独立profile可正常保存登录态（36个cookies）
+   登录检测不能看导航栏"登录"按钮（已登录也显示），只能看登录弹窗
+
+================================================================================
+四、未来重启建议
+================================================================================
+1. 【首选】使用Camoufox反检测浏览器（WebAI2API用的就是这个）
+   - 比普通Chrome+反检测插件更强
+   - 每个Worker独立userDataDir
+   - 可能需要安装Node.js环境运行WebAI2API本身
+
+2. 【次选】普通Chrome有头模式 + 更强反检测
+   - 不用--start-minimized，窗口正常显示
+   - 增加鼠标移动轨迹、随机滚动等人类行为模拟
+   - 降低请求频率（两次请求间隔≥60秒）
+   - 输入用逐字humanType（带随机延迟），不用execCommand一次性注入
+
+3. 【备选】直接运行WebAI2API
+   - 用户已下载源码到中转API/WebAI2API-main/
+   - 它本身就是完整的网页转API服务，支持豆包
+   - 需要Node.js环境，安装依赖后启动
+   - 用它的豆包适配器可能比我们自己写的更稳定
+
+4. 【风控规避】
+   - 每次请求间隔≥60秒
+   - 每天请求次数控制在合理范围（<50次）
+   - 不连续发送相似内容
+   - 偶尔手动在浏览器中交互，保持账号活性
+
+================================================================================
+五、文件清单
+================================================================================
+  中转API/doubao_bridge.py          — 豆包桥接服务v2.0（已写完，未通过测试）
+  中转API/login_doubao_standalone.py — 豆包独立登录脚本
+  中转API/web_cache/doubao_profile/  — 豆包独立profile（已登录，cookies有效）
+  中转API/__diagnose_doubao_login.py — 诊断脚本（可删除）
+  中转API/__probe_doubao.py          — 探测脚本（可删除）
+  中转API/__diagnose_doubao.py       — 诊断脚本（可删除）
+  中转API/__diagnose_doubao_v2.py    — 诊断脚本（可删除）
+
+================================================================================
+                            记录结束 — 待激活状态
+================================================================================
