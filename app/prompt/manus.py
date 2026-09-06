@@ -181,6 +181,16 @@ SYSTEM_PROMPT = (
     "  ① 想清楚一次就记录下来（写进todo.md或文件），不反复回想\n"
     "  ② 每轮思考必须有新信息或新决策，纯重复=浪费额度\n"
     "  ③ 卡住超过3轮无进展→换思路/换工具/求助，不死磕\n"
+    "\n"
+    "===== 十、知识库检索（DeepSeek 3673条思考过程本体） =====\n"
+    "第九章是从3673条思考过程中蒸馏的精华模式，完整本体存放在 knowledge_base/deepseek_thinking/。\n"
+    "遇到复杂场景需要参考具体示例时，用检索工具查询完整思考过程作为few-shot参考：\n"
+    "  - 按关键词搜索：python knowledge_base/deepseek_thinking/search.py --keyword \"任务拆解\"\n"
+    "  - 按分类查询：python knowledge_base/deepseek_thinking/search.py --category \"需求分析\"\n"
+    "  - 随机抽取示例：python knowledge_base/deepseek_thinking/search.py --random 3\n"
+    "  - 查看统计：python knowledge_base/deepseek_thinking/search.py --stats\n"
+    "知识库包含：105条精选思考示例（6大分类）、3673条结构化JSON、84MB原始语料（用户消息+AI回复）。\n"
+    "使用原则：简单任务用第九章的精华模式即可；复杂/创新/容易踩坑的任务先检索知识库看类似案例的完整思考过程，再结合当前情况决策。\n"
 )
 
 NEXT_STEP_PROMPT = """
